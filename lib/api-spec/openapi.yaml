@@ -3,20 +3,32 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: ModelHub API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: providers
+    description: AI provider management
+  - name: models
+    description: AI model management
+  - name: history
+    description: Request history
+  - name: settings
+    description: Application settings
+  - name: detection
+    description: Provider auto-detection
+  - name: playground
+    description: AI playground interactions
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +36,956 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # --- Providers ---
+  /providers:
+    get:
+      operationId: listProviders
+      tags: [providers]
+      summary: List all configured providers
+      responses:
+        "200":
+          description: List of providers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Provider"
+    post:
+      operationId: createProvider
+      tags: [providers]
+      summary: Create a new provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderInput"
+      responses:
+        "201":
+          description: Created provider
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Provider"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /providers/{id}:
+    get:
+      operationId: getProvider
+      tags: [providers]
+      summary: Get a provider by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Provider
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Provider"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateProvider
+      tags: [providers]
+      summary: Update a provider
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderPatch"
+      responses:
+        "200":
+          description: Updated provider
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Provider"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteProvider
+      tags: [providers]
+      summary: Delete a provider
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /providers/{id}/models:
+    get:
+      operationId: getProviderModels
+      tags: [providers]
+      summary: Fetch available models for a provider (from its API)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Models list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DiscoveredModel"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /providers/{id}/test:
+    post:
+      operationId: testProvider
+      tags: [providers]
+      summary: Test provider connectivity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Test result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestResult"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # --- Detection ---
+  /detect:
+    post:
+      operationId: detectProvider
+      tags: [detection]
+      summary: Auto-detect provider from API key, base URL, or endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DetectionInput"
+      responses:
+        "200":
+          description: Detection result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DetectionResult"
+
+  # --- Models ---
+  /models:
+    get:
+      operationId: listModels
+      tags: [models]
+      summary: List all saved models
+      parameters:
+        - name: providerId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of models
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Model"
+    post:
+      operationId: createModel
+      tags: [models]
+      summary: Save a model configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModelInput"
+      responses:
+        "201":
+          description: Created model
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Model"
+
+  /models/{id}:
+    patch:
+      operationId: updateModel
+      tags: [models]
+      summary: Update a saved model
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModelPatch"
+      responses:
+        "200":
+          description: Updated model
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Model"
+    delete:
+      operationId: deleteModel
+      tags: [models]
+      summary: Delete a saved model
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # --- Playground ---
+  /playground/chat:
+    post:
+      operationId: playgroundChat
+      tags: [playground]
+      summary: Send a chat completion request through a provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+      responses:
+        "200":
+          description: Chat response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /playground/stream:
+    post:
+      operationId: playgroundStream
+      tags: [playground]
+      summary: Stream a chat completion (SSE)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+      responses:
+        "200":
+          description: Server-Sent Events stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  # --- History ---
+  /history:
+    get:
+      operationId: listHistory
+      tags: [history]
+      summary: List request history
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: providerId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: starred
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: History list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryPage"
+    post:
+      operationId: createHistory
+      tags: [history]
+      summary: Save a new history entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HistoryInput"
+      responses:
+        "201":
+          description: Created entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryEntry"
+
+  /history/{id}:
+    get:
+      operationId: getHistory
+      tags: [history]
+      summary: Get a single history entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: History entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryEntry"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateHistory
+      tags: [history]
+      summary: Update a history entry (star/unstar, notes)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HistoryPatch"
+      responses:
+        "200":
+          description: Updated entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryEntry"
+    delete:
+      operationId: deleteHistory
+      tags: [history]
+      summary: Delete a history entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # --- Settings ---
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get global settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+    put:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update global settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsInput"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+
+  # --- Dashboard stats (wow endpoint) ---
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [providers]
+      summary: Get dashboard summary statistics
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    # --- Provider ---
+    Provider:
+      type: object
+      required: [id, name, providerType, baseUrl, enabled, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        providerType:
+          type: string
+        apiKey:
+          type: ["string", "null"]
+        baseUrl:
+          type: ["string", "null"]
+        model:
+          type: ["string", "null"]
+        customHeaders:
+          type: ["string", "null"]
+        organizationId:
+          type: ["string", "null"]
+        endpoint:
+          type: ["string", "null"]
+        enabled:
+          type: boolean
+        detectedType:
+          type: ["string", "null"]
+        confidence:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ProviderInput:
+      type: object
+      required: [name, providerType]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        providerType:
+          type: string
+        apiKey:
+          type: string
+        baseUrl:
+          type: string
+        model:
+          type: string
+        customHeaders:
+          type: string
+        organizationId:
+          type: string
+        endpoint:
+          type: string
+        enabled:
+          type: boolean
+
+    ProviderPatch:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        providerType:
+          type: string
+        apiKey:
+          type: string
+        baseUrl:
+          type: string
+        model:
+          type: string
+        customHeaders:
+          type: string
+        organizationId:
+          type: string
+        endpoint:
+          type: string
+        enabled:
+          type: boolean
+
+    # --- Detection ---
+    DetectionInput:
+      type: object
+      properties:
+        apiKey:
+          type: string
+        baseUrl:
+          type: string
+        endpoint:
+          type: string
+
+    DetectionResult:
+      type: object
+      required: [detected, confidence]
+      properties:
+        detected:
+          type: boolean
+        providerType:
+          type: ["string", "null"]
+        name:
+          type: ["string", "null"]
+        confidence:
+          type: integer
+        suggestedBaseUrl:
+          type: ["string", "null"]
+        reason:
+          type: ["string", "null"]
+
+    TestResult:
+      type: object
+      required: [success, latencyMs]
+      properties:
+        success:
+          type: boolean
+        latencyMs:
+          type: integer
+        message:
+          type: ["string", "null"]
+        modelsEndpointWorking:
+          type: boolean
+
+    # --- Discovered Model (from provider API) ---
+    DiscoveredModel:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        contextLength:
+          type: ["integer", "null"]
+        supportsVision:
+          type: boolean
+        supportsReasoning:
+          type: boolean
+        supportsFunctionCalling:
+          type: boolean
+        supportsImageGeneration:
+          type: boolean
+        supportsAudio:
+          type: boolean
+        supportsEmbeddings:
+          type: boolean
+        supportsStreaming:
+          type: boolean
+        supportsJsonMode:
+          type: boolean
+
+    # --- Saved Model ---
+    Model:
+      type: object
+      required: [id, providerId, modelId, name, createdAt]
+      properties:
+        id:
+          type: integer
+        providerId:
+          type: integer
+        modelId:
+          type: string
+        name:
+          type: string
+        contextLength:
+          type: ["integer", "null"]
+        supportsVision:
+          type: boolean
+        supportsReasoning:
+          type: boolean
+        supportsFunctionCalling:
+          type: boolean
+        supportsImageGeneration:
+          type: boolean
+        supportsAudio:
+          type: boolean
+        supportsEmbeddings:
+          type: boolean
+        supportsStreaming:
+          type: boolean
+        supportsJsonMode:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    ModelInput:
+      type: object
+      required: [providerId, modelId, name]
+      properties:
+        providerId:
+          type: integer
+        modelId:
+          type: string
+        name:
+          type: string
+        contextLength:
+          type: integer
+        supportsVision:
+          type: boolean
+        supportsReasoning:
+          type: boolean
+        supportsFunctionCalling:
+          type: boolean
+        supportsImageGeneration:
+          type: boolean
+        supportsAudio:
+          type: boolean
+        supportsEmbeddings:
+          type: boolean
+        supportsStreaming:
+          type: boolean
+        supportsJsonMode:
+          type: boolean
+
+    ModelPatch:
+      type: object
+      properties:
+        name:
+          type: string
+        contextLength:
+          type: integer
+        supportsVision:
+          type: boolean
+        supportsReasoning:
+          type: boolean
+        supportsFunctionCalling:
+          type: boolean
+        supportsImageGeneration:
+          type: boolean
+        supportsAudio:
+          type: boolean
+        supportsEmbeddings:
+          type: boolean
+        supportsStreaming:
+          type: boolean
+        supportsJsonMode:
+          type: boolean
+
+    # --- Playground ---
+    Message:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+        content:
+          type: string
+
+    ChatRequest:
+      type: object
+      required: [providerId, model, messages]
+      properties:
+        providerId:
+          type: integer
+        model:
+          type: string
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+        systemPrompt:
+          type: string
+        temperature:
+          type: number
+        topP:
+          type: number
+        maxTokens:
+          type: integer
+        presencePenalty:
+          type: number
+        frequencyPenalty:
+          type: number
+        seed:
+          type: ["integer", "null"]
+        stop:
+          type: array
+          items:
+            type: string
+        responseFormat:
+          type: ["string", "null"]
+        tools:
+          type: ["string", "null"]
+
+    TokenUsage:
+      type: object
+      properties:
+        promptTokens:
+          type: integer
+        completionTokens:
+          type: integer
+        totalTokens:
+          type: integer
+
+    ChatResponse:
+      type: object
+      required: [content, latencyMs]
+      properties:
+        content:
+          type: string
+        latencyMs:
+          type: integer
+        usage:
+          $ref: "#/components/schemas/TokenUsage"
+        costEstimate:
+          type: ["number", "null"]
+        rawResponse:
+          type: ["string", "null"]
+        rawRequest:
+          type: ["string", "null"]
+
+    # --- History ---
+    HistoryEntry:
+      type: object
+      required: [id, providerId, model, requestType, status, latencyMs, starred, createdAt]
+      properties:
+        id:
+          type: integer
+        providerId:
+          type: integer
+        providerName:
+          type: ["string", "null"]
+        model:
+          type: string
+        requestType:
+          type: string
+        status:
+          type: string
+        latencyMs:
+          type: integer
+        promptTokens:
+          type: ["integer", "null"]
+        completionTokens:
+          type: ["integer", "null"]
+        totalTokens:
+          type: ["integer", "null"]
+        costEstimate:
+          type: ["number", "null"]
+        starred:
+          type: boolean
+        rawRequest:
+          type: ["string", "null"]
+        rawResponse:
+          type: ["string", "null"]
+        errorMessage:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    HistoryPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoryEntry"
+        total:
+          type: integer
+
+    HistoryInput:
+      type: object
+      required: [providerId, model, requestType, status, latencyMs]
+      properties:
+        providerId:
+          type: integer
+        model:
+          type: string
+        requestType:
+          type: string
+        status:
+          type: string
+        latencyMs:
+          type: integer
+        promptTokens:
+          type: integer
+        completionTokens:
+          type: integer
+        totalTokens:
+          type: integer
+        costEstimate:
+          type: number
+        rawRequest:
+          type: string
+        rawResponse:
+          type: string
+        errorMessage:
+          type: string
+
+    HistoryPatch:
+      type: object
+      properties:
+        starred:
+          type: boolean
+        errorMessage:
+          type: string
+
+    # --- Settings ---
+    Settings:
+      type: object
+      required: [id, streamingEnabled, autoSave, retryCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        defaultProviderId:
+          type: ["integer", "null"]
+        defaultModel:
+          type: ["string", "null"]
+        streamingEnabled:
+          type: boolean
+        autoSave:
+          type: boolean
+        retryCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SettingsInput:
+      type: object
+      properties:
+        defaultProviderId:
+          type: integer
+        defaultModel:
+          type: string
+        streamingEnabled:
+          type: boolean
+        autoSave:
+          type: boolean
+        retryCount:
+          type: integer
+
+    # --- Dashboard stats ---
+    DashboardStats:
+      type: object
+      required: [connectedProviders, availableModels, requestsToday, tokensToday, costToday]
+      properties:
+        connectedProviders:
+          type: integer
+        availableModels:
+          type: integer
+        requestsToday:
+          type: integer
+        tokensToday:
+          type: integer
+        costToday:
+          type: number
+        requestsByProvider:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProviderStat"
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoryEntry"
+
+    ProviderStat:
+      type: object
+      required: [providerName, requestCount]
+      properties:
+        providerName:
+          type: string
+        requestCount:
+          type: integer
+        tokensUsed:
+          type: integer
+        costEstimate:
+          type: number
